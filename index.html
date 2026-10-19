@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="הגרפולוג – ניתוח אישיות מכתב יד, נקודות למחשבה, הכוונה אישית ויצוא סיכום ל-AI">
+<title>הגרפולוג</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Assistant:wght@400;600;700&family=Bellefair&display=swap">
+<style>
+/* Layout: one column "notebook" — each step is a sheet of ruled paper with a red margin line on the writing side (right, RTL). */
+:root{
+  --paper:#EEF1F6; --sheet:#FFFFFF; --ink:#18213D; --muted:#5A6482;
+  --rule:#D6DDEA; --margin:#D2443D; --accent:#2441B5; --accent-soft:#E2E7FA;
+  --ok:#2F7D55; --warn:#B26A12;
+  --f-display:"Bellefair","Frank Ruhl Libre",Georgia,serif;
+  --f-body:"Assistant","Segoe UI",Arial,sans-serif;
+  --f-hand:"Amatic SC","Assistant",cursive;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0E1220; --sheet:#161B2B; --ink:#E5E9F4; --muted:#97A1BC;
+  --rule:#273050; --margin:#E2645C; --accent:#90A6FF; --accent-soft:#1D2646;
+  --ok:#6CC596; --warn:#E6A24E; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E1220; --sheet:#161B2B; --ink:#E5E9F4; --muted:#97A1BC;
+  --rule:#273050; --margin:#E2645C; --accent:#90A6FF; --accent-soft:#1D2646;
+  --ok:#6CC596; --warn:#E6A24E; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{direction:rtl}
+[hidden]{display:none!important}
+img{max-width:100%}
+.manual{margin-top:18px;border:1.5px solid var(--rule);border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.manual h3{margin:0}
+.manual ol{margin:0;padding-inline-start:1.2em;display:flex;flex-direction:column;gap:6px}
+.manual ol li::marker{color:var(--accent);font-weight:700}
+.manual textarea{min-height:120px;font-size:14px;direction:ltr;text-align:left}
+.manual textarea.he{direction:rtl;text-align:right}
+.ai-links{display:flex;flex-wrap:wrap;gap:8px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.65;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-direction:column;gap:4px;padding-inline:4px}
+.brand{font-family:var(--f-hand);font-size:clamp(54px,11vw,78px);line-height:1;color:var(--accent);margin:0;letter-spacing:.02em}
+.tag{font-family:var(--f-display);font-size:clamp(20px,3.6vw,25px);margin:0;text-wrap:balance}
+.lede{color:var(--muted);margin:2px 0 0;max-width:60ch}
+
+nav.steps{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;color:var(--muted);padding-inline:4px}
+nav.steps a{color:inherit;text-decoration:none;display:flex;gap:6px;align-items:baseline}
+nav.steps a b{font-family:var(--f-hand);font-size:22px;color:var(--accent)}
+nav.steps a.on{color:var(--ink);font-weight:700}
+
+.sheet{position:relative;background:var(--sheet);border-radius:4px;
+  box-shadow:0 1px 0 var(--rule),0 10px 30px -18px rgb(20 30 70 / .35);
+  padding-block:30px 32px;padding-inline:clamp(46px,8vw,70px) clamp(20px,5vw,44px)}
+.sheet::before{content:"";position:absolute;inset-block:0;inset-inline-start:clamp(30px,5.5vw,48px);width:1.5px;background:var(--margin);opacity:.7}
+.sheet.ruled{background-image:repeating-linear-gradient(to bottom,transparent 0 31px,var(--rule) 31px 32px);background-position:0 18px}
+.sheet h2{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,5vw,32px);margin:0 0 6px;line-height:1.2;text-wrap:balance}
+.sheet h3{font-family:var(--f-display);font-weight:400;font-size:23px;margin:26px 0 8px}
+.eyebrow{font-family:var(--f-hand);font-size:26px;color:var(--margin);line-height:1;position:absolute;inset-inline-start:6px;top:28px;width:clamp(22px,4vw,36px);text-align:center}
+.sub{color:var(--muted);margin:0 0 14px;max-width:62ch}
+
+ol.rules{margin:10px 0 0;padding-inline-start:1.1em;display:flex;flex-direction:column;gap:8px}
+ol.rules li::marker{color:var(--accent);font-weight:700}
+.prompt-box{margin-top:18px;border:1.5px dashed var(--accent);border-radius:6px;padding:14px 16px;background:var(--accent-soft)}
+.prompt-box .k{font-size:13px;letter-spacing:.06em;color:var(--accent);font-weight:700}
+.prompt-box p{margin:4px 0 0;font-family:var(--f-display);font-size:20px}
+.tips{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:16px}
+.tip{border-top:2px solid var(--rule);padding-top:8px;font-size:15px;color:var(--muted)}
+.tip strong{display:block;color:var(--ink);font-size:15px}
+
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1 1 180px}
+.field label,.legend{font-size:14px;font-weight:700;color:var(--muted)}
+input[type=text],select,textarea{font:inherit;color:var(--ink);background:var(--sheet);border:1.5px solid var(--rule);border-radius:6px;padding:9px 11px;width:100%}
+textarea{min-height:76px;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible,label.btn:focus-within{outline:2.5px solid var(--accent);outline-offset:2px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg label{display:flex;align-items:center;gap:6px;border:1.5px solid var(--rule);border-radius:999px;padding:5px 13px;cursor:pointer;font-size:15px}
+.seg input{accent-color:var(--accent)}
+.seg label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+
+.btn{font:inherit;font-weight:700;border-radius:999px;padding:10px 20px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.btn.primary{background:var(--accent);color:var(--sheet)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.small{padding:6px 14px;font-size:15px}
+.linkbtn{font:inherit;background:none;border:0;color:var(--accent);text-decoration:underline;cursor:pointer;padding:0}
+label.btn input{position:absolute;opacity:0;width:1px;height:1px}
+
+.drop{margin-top:16px;border:2px dashed var(--rule);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.thumbs{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.thumb{position:relative;width:110px;height:140px;border-radius:4px;overflow:hidden;border:1px solid var(--rule);background:var(--paper)}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb button{position:absolute;top:4px;inset-inline-end:4px;border:0;border-radius:999px;width:26px;height:26px;background:var(--ink);color:var(--sheet);cursor:pointer;font-size:15px;line-height:1}
+
+.status{margin-top:14px;font-size:15px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.status.err{color:var(--margin)}
+.pen{width:34px;height:12px;flex:none}
+.pen path{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:60;animation:scrib 1.6s linear infinite}
+@keyframes scrib{from{stroke-dashoffset:120}to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.pen path{animation:none}}
+
+.banner{border-radius:6px;padding:10px 14px;font-size:15px;background:var(--accent-soft);color:var(--ink);margin-bottom:16px}
+.banner.warn{border-inline-start:4px solid var(--warn)}
+.overview{font-family:var(--f-display);font-size:22px;line-height:1.5;margin:6px 0 4px;max-width:58ch}
+
+.traits{display:flex;flex-direction:column;margin-top:10px}
+.trait{padding-block:14px;border-top:1px solid var(--rule)}
+.trait-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.trait-name{font-weight:700}
+.trait-val{font-family:var(--f-hand);font-size:22px;color:var(--accent);line-height:1}
+.gauge{position:relative;height:22px;margin:6px 0 2px}
+.gauge::before{content:"";position:absolute;inset-inline:0;top:10px;height:2px;background:repeating-linear-gradient(to left,var(--rule) 0 6px,transparent 6px 10px)}
+.gauge .mid{position:absolute;inset-inline-start:50%;top:5px;width:1px;height:12px;background:var(--rule)}
+.gauge .dot{position:absolute;top:3px;width:16px;height:16px;margin-inline-start:-8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.poles{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.trait p{margin:6px 0 0;font-size:16px}
+.trait .obs{color:var(--muted)}
+
+.portrait{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 22px;margin-top:6px}
+.portrait div{min-width:0}
+.portrait h4{margin:0;font-size:14px;letter-spacing:.05em;color:var(--accent)}
+.portrait p{margin:2px 0 0}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 26px}
+ul.plain{margin:6px 0 0;padding-inline-start:1.1em}
+ul.plain li{margin-bottom:4px}
+ul.plain li::marker{color:var(--accent)}
+ul.tens li::marker{color:var(--margin)}
+
+.reflect{counter-reset:r;display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.reflect div{display:grid;grid-template-columns:34px 1fr;gap:4px 8px}
+.reflect div::before{counter-increment:r;content:counter(r);font-family:var(--f-hand);font-size:30px;color:var(--margin);line-height:1;grid-row:span 2}
+.reflect b{font-weight:700}
+.reflect span{font-family:var(--f-display);font-size:19px;color:var(--muted)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}
+.chip{font:inherit;font-size:15px;border:1.5px solid var(--rule);background:var(--sheet);color:var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+.guide{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px}
+.guide .topic{font-family:var(--f-hand);font-size:28px;color:var(--accent);line-height:1.1}
+.md h3{font-size:20px;margin:16px 0 4px}
+.md p{margin:6px 0}
+.md ul{margin:4px 0;padding-inline-start:1.2em}
+
+.preview{margin-top:14px;max-height:280px;overflow:auto;border:1px solid var(--rule);border-radius:6px;padding:12px 14px;background:var(--paper);font-size:14px;white-space:pre-wrap;line-height:1.55}
+.fine{font-size:14px;color:var(--muted);max-width:66ch}
+footer{text-align:center}
+</style>
+</head>
+<body>
+
+<div class="wrap" dir="rtl" lang="he">
+  <header>
+    <h1 class="brand">הגרפולוג</h1>
+    <p class="tag">כתב היד שלך, כראי לאישיות</p>
+    <p class="lede">כותבים דף לפי ההנחיות, מצלמים, ומקבלים קריאה של הכתב: תכונות, כוחות, נקודות למחשבה והכוונה בנושא שמעסיק אותך. בסוף אפשר לייצא סיכום ולהעלות אותו לכל AI.</p>
+  </header>
+
+  <nav class="steps" aria-label="שלבים">
+    <a href="#write" id="n1" class="on"><b>1</b>כתיבה</a>
+    <a href="#upload" id="n2"><b>2</b>צילום</a>
+    <a href="#results" id="n3"><b>3</b>ניתוח</a>
+    <a href="#guide" id="n4"><b>4</b>הכוונה</a>
+    <a href="#export" id="n5"><b>5</b>סיכום</a>
+  </nav>
+
+  <!-- 1 -->
+  <section class="sheet ruled" id="write">
+    <span class="eyebrow">1</span>
+    <h2>לפני הצילום: כתבו דף אחד</h2>
+    <p class="sub">כדי שהניתוח יהיה מדויק, הכתב צריך להיות טבעי וספונטני. אל תתאמצו לכתוב יפה.</p>
+    <ol class="rules">
+      <li><strong>דף לבן חלק, בלי שורות</strong> (A4 רגיל). השורות מכתיבות קו בסיס ומסתירות מידע חשוב.</li>
+      <li><strong>עט כדורי או ג'ל, כחול או שחור.</strong> לא עיפרון ולא טוש.</li>
+      <li>שבו בנוחות, על משטח קשה, וכתבו ביד שאתם כותבים בה בדרך כלל.</li>
+      <li><strong>כתבו 8–12 שורות</strong> בטקסט חופשי שלכם, לא העתקה. הנושא המוצע מופיע למטה.</li>
+      <li>אל תמחקו ואל תתקנו. טעות? פשוט ממשיכים.</li>
+      <li><strong>חתמו בסוף הדף</strong> כמו שאתם חותמים על מסמך.</li>
+    </ol>
+    <div class="prompt-box">
+      <div class="k">נושא לכתיבה</div>
+      <p>"איך נראה יום טוב בשבילי, ומה הייתי רוצה שיהיה בחיי בעוד שנה."</p>
+    </div>
+    <div class="tips" aria-label="טיפים לצילום">
+      <div class="tip"><strong>אור יום</strong>ליד חלון, בלי פלאש ובלי צל של הטלפון על הדף.</div>
+      <div class="tip"><strong>צילום מלמעלה</strong>הטלפון מקביל לדף, וכל הדף כולל השוליים בתוך הפריים.</div>
+      <div class="tip"><strong>חתימה בקלוז־אפ</strong>אפשר להוסיף צילום שני של החתימה מקרוב.</div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="sheet" id="upload">
+    <span class="eyebrow">2</span>
+    <h2>צילום והעלאה</h2>
+    <p class="sub">כמה פרטים קצרים עוזרים לניתוח. כולם רשות.</p>
+    <div class="row">
+      <div class="field"><label for="name">שם פרטי</label><input type="text" id="name" autocomplete="given-name" placeholder="לא חובה"></div>
+      <div class="field">
+        <span class="legend" id="lg-hand">יד כותבת</span>
+        <div class="seg" role="radiogroup" aria-labelledby="lg-hand">
+          <label><input type="radio" name="hand" id="hand-r" value="ימין" checked>ימין</label>
+          <label><input type="radio" name="hand" id="hand-l" value="שמאל">שמאל</label>
+        </div>
+      </div>
+      <div class="field">
+        <span class="legend" id="lg-gen">לפנות אליי בלשון</span>
+        <div class="seg" role="radiogroup" aria-labelledby="lg-gen">
+          <label><input type="radio" name="gen" id="gen-m" value="זכר" checked>זכר</label>
+          <label><input type="radio" name="gen" id="gen-f" value="נקבה">נקבה</label>
+          <label><input type="radio" name="gen" id="gen-n" value="רבים">רבים</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="drop" id="drop">
+      <div class="row" style="justify-content:center">
+        <label class="btn primary">צלמו את הדף<input type="file" id="cam" accept="image/*" capture="environment"></label>
+        <label class="btn">בחרו מהגלריה<input type="file" id="gal" accept="image/jpeg,image/png,image/webp" multiple></label>
+      </div>
+      <div class="fine" id="dropHint">או גררו לכאן תמונה. עד 3 תמונות: הדף המלא, ואם תרצו גם החתימה מקרוב.</div>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+
+    <div class="row" style="margin-top:18px">
+      <button class="btn primary" id="analyze" disabled>נתחו את כתב היד</button>
+      <button class="btn small" id="stop" hidden>עצירה</button>
+      <button class="linkbtn" id="showExample">הצגת דוח לדוגמה</button>
+    </div>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <div class="manual" id="manualA" hidden>
+      <h3>ניתוח דרך הצ'אט שלכם עם AI</h3>
+      <ol>
+        <li>מלאו למעלה שם, יד כותבת ולשון פנייה, ולחצו <b>העתקת ההנחיה</b>.</li>
+        <li>פתחו שיחה חדשה ב־Claude, ב־ChatGPT או ב־Gemini, צרפו את צילום הדף והדביקו את ההנחיה.</li>
+        <li>העתיקו את כל התשובה שקיבלתם, הדביקו אותה כאן ולחצו <b>הצגת הניתוח</b>.</li>
+      </ol>
+      <div class="row">
+        <button class="btn primary" id="copyAPrompt" type="button">העתקת ההנחיה</button>
+        <div class="ai-links">
+          <a class="btn small" href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a>
+          <a class="btn small" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>
+          <a class="btn small" href="https://gemini.google.com/app" target="_blank" rel="noopener">Gemini</a>
+        </div>
+      </div>
+      <div class="field"><label for="pasteA">התשובה מה־AI</label><textarea id="pasteA" placeholder='{"readable": true, ...}'></textarea></div>
+      <div class="row"><button class="btn primary" id="applyA" type="button">הצגת הניתוח</button></div>
+      <div class="status" id="mstatus" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="sheet" id="results" hidden>
+    <span class="eyebrow">3</span>
+    <div id="resultBody"></div>
+  </section>
+
+  <!-- 4 -->
+  <section class="sheet" id="guide" hidden>
+    <span class="eyebrow">4</span>
+    <h2>רוצה הכוונה בכיוון מסוים?</h2>
+    <p class="sub">בחרו נושא שמעסיק אתכם עכשיו, או כתבו במילים שלכם. ההכוונה תישען על מה שעלה מהכתב.</p>
+    <div class="chips" id="chips"></div>
+    <div class="field"><label for="topic">הנושא שלי</label><input type="text" id="topic" placeholder="למשל: האם לעזוב את העבודה ולפתוח עסק"></div>
+    <div class="field" style="margin-top:10px"><label for="ctx">רקע קצר (רשות)</label><textarea id="ctx" placeholder="מה קורה עכשיו, מה מתלבטים, מה כבר ניסיתם"></textarea></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn primary" id="askGuide">קבלו הכוונה</button>
+      <button class="btn small" id="stopGuide" hidden>עצירה</button>
+    </div>
+    <div class="status" id="gstatus" role="status" aria-live="polite"></div>
+
+    <div class="manual" id="manualG" hidden>
+      <ol>
+        <li>בחרו נושא למעלה ולחצו <b>העתקת הנחיה להכוונה</b>.</li>
+        <li>הדביקו אותה בצ'אט עם ה־AI, העתיקו את התשובה והדביקו כאן.</li>
+      </ol>
+      <div class="row"><button class="btn primary" id="copyGPrompt" type="button">העתקת הנחיה להכוונה</button></div>
+      <div class="field"><label for="pasteG">ההכוונה שקיבלתי</label><textarea id="pasteG" class="he"></textarea></div>
+      <div class="row"><button class="btn primary" id="applyG" type="button">הוספה לסיכום</button></div>
+    </div>
+    <div id="guides"></div>
+  </section>
+
+  <!-- 5 -->
+  <section class="sheet" id="export" hidden>
+    <span class="eyebrow">5</span>
+    <h2>מסמך הסיכום</h2>
+    <p class="sub">הסיכום כולל את הניתוח, נקודות המחשבה וההכוונות. העלו אותו ל־Claude, ל־ChatGPT או לכל AI אחר והמשיכו משם את השיחה.</p>
+    <div class="seg" style="margin-bottom:12px">
+      <label><input type="checkbox" id="incPrompt" checked>להוסיף בראש המסמך בקשה מוכנה ל־AI</label>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="copyDoc">העתקה לשיתוף</button>
+      <button class="btn" id="dlMd">הורדה כ־Markdown</button>
+      <button class="btn" id="dlTxt">הורדה כטקסט</button>
+      <button class="btn" id="shareDoc" hidden>שיתוף</button>
+    </div>
+    <div class="status" id="estatus" role="status" aria-live="polite"></div>
+    <pre class="preview" id="docPreview" tabindex="0"></pre>
+    <div class="row" style="margin-top:18px"><button class="linkbtn" id="reset">ניתוח חדש</button></div>
+  </section>
+
+  <footer><p class="fine" style="margin:0 auto">גרפולוגיה היא שיטה פרשנית שאינה מבוססת מדעית. התייחסו לניתוח כהזמנה להתבוננות עצמית, לא כאבחון. הכלי אינו תחליף לייעוץ מקצועי.</p></footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const TRAITS = [
+  ["size","גודל הכתב","קטן","גדול"],
+  ["slant","נטייה","נטוי אחורה","נטוי קדימה"],
+  ["pressure","לחץ העט","קל","חזק"],
+  ["word_spacing","רווח בין מילים","צפוף","מרווח"],
+  ["line_spacing","רווח בין שורות","צפוף","מרווח"],
+  ["margins","שוליים","צרים","רחבים"],
+  ["baseline","קו הבסיס","יורד","עולה"],
+  ["form","צורת האותיות","זוויתית","מעוגלת"],
+  ["speed","קצב הכתיבה","איטי ומדוד","מהיר ושוטף"],
+  ["connection","חיבור בין אותיות","מנותק","מחובר"]
+];
+
+let sample = null, downloads = null, maxImages = 3;
+let files = [], result = null, guides = [], isExample = false, ctl = null, gctl = null;
+
+const STORE = "grapholog.v1";
+function save(){ if(isExample) return; try{ localStorage.setItem(STORE, JSON.stringify({result, guides, name:$("#name").value})); }catch{} }
+function load(){ try{ return JSON.parse(localStorage.getItem(STORE) || "null"); }catch{ return null; } }
+
+function prefs(){
+  return {
+    name: $("#name").value.trim(),
+    hand: document.querySelector('input[name=hand]:checked').value,
+    gen: document.querySelector('input[name=gen]:checked').value
+  };
+}
+
+/* ---------- capabilities ---------- */
+(async () => {
+  if (!window.claude?.use) { setTimeout(noClaude); return; }
+  try { sample = await claude.use("sample"); } catch { sample = null; }
+  try { downloads = await claude.use("downloads"); } catch { downloads = null; }
+  if (!sample) { setTimeout(noClaude); return; }
+  try {
+    const lim = await sample.limits();
+    if (!lim.images) { setStatus("#status", "בתצוגה הזו אי אפשר לשלוח תמונות לניתוח. פתחו את הכלי מתוך Claude באתר או באפליקציה.", true); }
+    else maxImages = Math.min(3, lim.images.maxCount || 3);
+  } catch {}
+  if (!downloads) { $("#dlMd").hidden = true; $("#dlTxt").hidden = true; }
+  refreshAnalyze();
+})();
+let manual = false;
+function noClaude(){
+  manual = true;
+  $("#drop").hidden = true; $("#analyze").hidden = true; $("#stop").hidden = true;
+  $("#askGuide").hidden = true; $("#stopGuide").hidden = true;
+  $("#manualA").hidden = false; $("#manualG").hidden = false;
+  document.querySelector("#upload h2").textContent = "צילום וניתוח";
+  document.querySelector("#upload .sub").textContent = "הניתוח נעשה בצ'אט AI שכבר יש לכם, בלי עלות נוספת. הכלי מכין את ההנחיה ומציג את התוצאה.";
+}
+
+/* tolerant JSON extraction from a pasted AI reply */
+function extractJSON(t){
+  t = String(t || "").trim();
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) t = fence[1].trim();
+  try { return JSON.parse(t); } catch {}
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch {} }
+  return null;
+}
+async function copyText(txt, statusSel, okMsg){
+  try { await navigator.clipboard.writeText(txt); setStatus(statusSel, okMsg); return true; }
+  catch {
+    const ta = document.createElement("textarea"); ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.append(ta); ta.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch {}
+    ta.remove();
+    setStatus(statusSel, ok ? okMsg : "ההעתקה לא הצליחה בדפדפן הזה.", !ok);
+    return ok;
+  }
+}
+$("#copyAPrompt").onclick = () => copyText(analysisPrompt(prefs()) + "\n\n(The handwriting photo is attached to this message.)", "#mstatus", "ההנחיה הועתקה. הדביקו אותה בצ'אט יחד עם צילום הדף.");
+$("#applyA").onclick = () => {
+  const data = extractJSON($("#pasteA").value);
+  if (!data) { setStatus("#mstatus", "לא מצאתי בתשובה ניתוח בפורמט הנכון. ודאו שהעתקתם את כל התשובה, כולל הסוגריים המסולסלים.", true); return; }
+  if (data.readable === false) { setStatus("#mstatus", esc(data.readability_note || "ה־AI לא הצליח לקרוא את הכתב. צלמו שוב באור טוב ומלמעלה."), true); return; }
+  result = normalize(data); guides = []; isExample = false;
+  setStatus("#mstatus", "הניתוח מוכן.");
+  renderAll(); save(); $("#results").scrollIntoView();
+};
+$("#copyGPrompt").onclick = () => {
+  const topic = $("#topic").value.trim();
+  if (!result || isExample) { setStatus("#gstatus", "הכוונה זמינה אחרי ניתוח של הכתב שלכם.", true); return; }
+  if (!topic) { setStatus("#gstatus", "בחרו נושא או כתבו אחד.", true); $("#topic").focus(); return; }
+  copyText(guidePrompt(topic, $("#ctx").value.trim()), "#gstatus", "ההנחיה הועתקה. הדביקו אותה בצ'אט והחזירו לכאן את התשובה.");
+};
+$("#applyG").onclick = () => {
+  const topic = $("#topic").value.trim() || "הכוונה";
+  const text = $("#pasteG").value.trim();
+  if (!text) { setStatus("#gstatus", "הדביקו קודם את התשובה שקיבלתם.", true); return; }
+  guides.unshift({ topic, text }); $("#pasteG").value = "";
+  renderGuides(); renderDoc(); save();
+  setStatus("#gstatus", "ההכוונה נוספה לסיכום.");
+};
+
+function setStatus(sel, html, err=false, busy=false){
+  const el = $(sel);
+  el.classList.toggle("err", !!err);
+  el.innerHTML = (busy ? '<svg class="pen" viewBox="0 0 34 12" aria-hidden="true"><path d="M1 8c3-6 5 6 8 0s5 6 8 0 5 6 8 0 5 6 8 0"/></svg>' : "") + (html || "");
+}
+
+/* ---------- images ---------- */
+function addFiles(list){
+  for (const f of list) {
+    if (!/^image\//.test(f.type)) continue;
+    if (files.length >= maxImages) break;
+    files.push(f);
+  }
+  renderThumbs(); refreshAnalyze();
+}
+function renderThumbs(){
+  const box = $("#thumbs"); box.innerHTML = "";
+  files.forEach((f, i) => {
+    const d = document.createElement("div"); d.className = "thumb";
+    const img = document.createElement("img"); img.alt = "תמונה " + (i+1); img.src = URL.createObjectURL(f);
+    const b = document.createElement("button"); b.type = "button"; b.textContent = "×"; b.setAttribute("aria-label","הסרת תמונה " + (i+1));
+    b.onclick = () => { files.splice(i,1); renderThumbs(); refreshAnalyze(); };
+    d.append(img, b); box.append(d);
+  });
+  $("#n2").classList.toggle("on", files.length > 0);
+}
+function refreshAnalyze(){ $("#analyze").disabled = !sample || files.length === 0; }
+$("#cam").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
+$("#gal").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
+const drop = $("#drop");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); });
+
+/* ---------- analysis ---------- */
+function analysisPrompt(p){
+  return `You are an experienced graphologist trained in the European/Israeli school, fluent in Hebrew handwriting as well as Latin script.
+Analyze the handwriting in the attached photo(s). The writer was instructed to write 8-12 spontaneous lines on plain unlined paper with a ballpoint pen and to sign at the bottom. A second photo, if present, is a close-up of the signature.
+
+Writer details: first name: ${p.name || "(not given)"}; writing hand: ${p.hand}. Address the writer in Hebrew using ${p.gen === "נקבה" ? "feminine" : p.gen === "רבים" ? "plural (gender-neutral)" : "masculine"} second-person forms.
+
+Hebrew is written right-to-left: for Hebrew text, "forward" slant leans toward the writing direction (toward the left of the page), "backward" leans right. For Latin script the opposite. Left-handed writers often slant differently; weigh that.
+
+Framing: graphology is an interpretive method without scientific validation. Phrase every interpretation as a tendency or possibility (נוטה, ייתכן, עשוי), warm, respectful and balanced, grounded in something visible in the writing. Never make medical, psychiatric, or diagnostic claims, and do not infer health, honesty, intelligence, age, gender or ethnicity.
+
+If the image does not show handwriting, or it is too blurry/dark/cropped to judge, return {"readable": false, "readability_note": "<in Hebrew: what is wrong and how to re-photograph>"} only.
+
+Otherwise reply with only JSON in exactly this shape. All text in Hebrew.
+{
+  "readable": true,
+  "readability_note": "<short note on photo quality, or empty>",
+  "script": "<language/script of the writing>",
+  "overview": "<2-3 sentence first impression of the whole page, its rhythm and space>",
+  "traits": [ {"key": "size", "value": <0-100>, "observation": "<what is visibly there, 1 sentence>", "meaning": "<what it may express, 1-2 sentences>"} ],
+  "signature": {"present": <true|false>, "observation": "<compare signature to text>", "meaning": "<public self vs private self>"},
+  "portrait": {"summary": "<one rich paragraph, 4-6 sentences>", "thinking": "<style of thinking>", "emotion": "<emotional style>", "social": "<relating to others>", "drive": "<energy, motivation, work style>"},
+  "strengths": ["<3-5 strengths>"],
+  "tensions": ["<2-4 growth edges or inner tensions, kindly phrased>"],
+  "reflection": [ {"title": "<short title>", "question": "<an open question for self-reflection>"} ],
+  "directions": ["<4-6 short topic labels (2-4 words) this person might want guidance on, based on the analysis>"]
+}
+"traits" must contain exactly these 10 keys in this order. value is 0-100 on the scale between the two poles (0 = first pole, 50 = middle):
+size: small → large; slant: backward → forward (50 = upright); pressure: light → heavy; word_spacing: tight → wide; line_spacing: tight → wide; margins: narrow → wide; baseline: descending → ascending (50 = straight; mention stability in the observation); form: angular → rounded; speed: slow and deliberate → fast and fluent; connection: disconnected → connected.
+"reflection" must have exactly 5 items.`;
+}
+
+const LOADING = ["בוחן את קו הבסיס", "מודד רווחים בין מילים", "מסתכל על הלחץ והקצב", "משווה את החתימה לטקסט", "מרכיב את הדיוקן"];
+let loadTimer = null;
+function startLoading(){
+  let i = 0;
+  setStatus("#status", LOADING[0] + "…", false, true);
+  loadTimer = setInterval(() => { i = (i+1) % LOADING.length; setStatus("#status", LOADING[i] + "…", false, true); }, 4500);
+}
+function stopLoading(){ clearInterval(loadTimer); loadTimer = null; }
+
+const ERR = {
+  not_granted: "הכלי לא קיבל אישור להשתמש ב־Claude. אפשר לאשר בפתיחה הבאה של הדף.",
+  sampling_disabled: "Claude לא זמין בחשבון הזה.",
+  rate_limited: "נשלחו יותר מדי בקשות. נסו שוב בעוד כמה דקות.",
+  image_rejected: "התמונה לא התקבלה. נסו קובץ JPG או PNG אחר.",
+  images_unavailable: "בתצוגה הזו אי אפשר לשלוח תמונות. פתחו את הכלי בתוך Claude.",
+  session_expired: "צריך להתחבר מחדש ל־Claude.",
+  refused: "לא ניתן לנתח את התמונה הזו. נסו צילום אחר של דף כתוב.",
+  invalid_json: "התשובה הגיעה בפורמט לא תקין. לחצו שוב לניסיון נוסף.",
+  empty_completion: "לא התקבלה תשובה. נסו שוב."
+};
+const errText = c => ERR[c] || "משהו השתבש בחיבור. נסו שוב.";
+
+$("#analyze").onclick = async () => {
+  if (!sample || !files.length) return;
+  ctl = new AbortController();
+  $("#analyze").disabled = true; $("#stop").hidden = false;
+  startLoading();
+  try {
+    const data = await sample.json(analysisPrompt(prefs()), { images: files, signal: ctl.signal, cache: false });
+    stopLoading();
+    if (!data || data.readable === false) {
+      setStatus("#status", esc(data?.readability_note || "לא הצלחתי לקרוא את הכתב בתמונה. צלמו שוב באור טוב ומלמעלה."), true);
+      return;
+    }
+    result = normalize(data); guides = []; isExample = false;
+    setStatus("#status", "הניתוח מוכן.");
+    renderAll(); save();
+    $("#results").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+  } catch (e) {
+    stopLoading();
+    if (e?.code === "cancelled") setStatus("#status", "הניתוח נעצר.");
+    else setStatus("#status", errText(e?.code), true);
+  } finally {
+    $("#stop").hidden = true; refreshAnalyze();
+  }
+};
+$("#stop").onclick = () => ctl?.abort();
+
+function normalize(d){
+  const byKey = {};
+  (Array.isArray(d.traits) ? d.traits : []).forEach(t => { if (t && t.key) byKey[t.key] = t; });
+  const clamp = v => Math.max(0, Math.min(100, Number(v) || 50));
+  return {
+    script: String(d.script || ""),
+    note: String(d.readability_note || ""),
+    overview: String(d.overview || ""),
+    traits: TRAITS.map(([k]) => ({ key:k, value: clamp(byKey[k]?.value), observation: String(byKey[k]?.observation || ""), meaning: String(byKey[k]?.meaning || "") })),
+    signature: d.signature && typeof d.signature === "object" ? { present: !!d.signature.present, observation: String(d.signature.observation || ""), meaning: String(d.signature.meaning || "") } : { present:false, observation:"", meaning:"" },
+    portrait: Object.fromEntries(["summary","thinking","emotion","social","drive"].map(k => [k, String(d.portrait?.[k] || "")])),
+    strengths: (d.strengths || []).map(String).slice(0,6),
+    tensions: (d.tensions || []).map(String).slice(0,5),
+    reflection: (d.reflection || []).filter(r => r && r.question).map(r => ({ title:String(r.title||""), question:String(r.question) })).slice(0,6),
+    directions: (d.directions || []).map(String).slice(0,6),
+    date: new Date().toISOString().slice(0,10)
+  };
+}
+
+/* ---------- render ---------- */
+function renderAll(){
+  renderResults(); renderChips(); renderGuides(); renderDoc();
+  $("#results").hidden = false; $("#guide").hidden = false; $("#export").hidden = false;
+  ["n3","n4","n5"].forEach(id => $("#"+id).classList.add("on"));
+}
+function renderResults(){
+  const r = result, nm = prefs().name;
+  const label = v => v < 20 ? "בולט מאוד" : v < 40 ? "נוטה" : v <= 60 ? "מאוזן" : v <= 80 ? "נוטה" : "בולט מאוד";
+  const pole = (t, v) => v < 40 ? t[2] : v > 60 ? t[3] : "באמצע";
+  let h = "";
+  if (isExample) h += `<div class="banner warn"><b>דוח לדוגמה.</b> כך נראית תוצאה. כדי לקבל ניתוח של הכתב שלכם, צלמו דף והעלו אותו בשלב 2.</div>`;
+  h += `<h2>${nm ? "הכתב של " + esc(nm) : "מה הכתב מספר"}</h2>`;
+  if (r.note) h += `<p class="fine">${esc(r.note)}</p>`;
+  h += `<p class="overview">${esc(r.overview)}</p>`;
+  h += `<h3>עשרה סימנים בכתב</h3><div class="traits">`;
+  r.traits.forEach((t, i) => {
+    const def = TRAITS[i];
+    h += `<div class="trait">
+      <div class="trait-head"><span class="trait-name">${def[1]}</span><span class="trait-val">${esc(pole(def, t.value))}${t.value < 40 || t.value > 60 ? " · " + label(t.value) : ""}</span></div>
+      <div class="gauge" role="img" aria-label="${def[1]}: ${t.value} מתוך 100, בין ${def[2]} ל${def[3]}"><span class="mid"></span><span class="dot" style="inset-inline-start:${t.value}%"></span></div>
+      <div class="poles"><span>${def[2]}</span><span>${def[3]}</span></div>
+      ${t.observation ? `<p class="obs">${esc(t.observation)}</p>` : ""}
+      ${t.meaning ? `<p>${esc(t.meaning)}</p>` : ""}
+    </div>`;
+  });
+  h += `</div>`;
+  if (r.signature.present || r.signature.observation) {
+    h += `<h3>החתימה</h3><p class="obs" style="color:var(--muted);margin:0">${esc(r.signature.observation)}</p><p style="margin:6px 0 0">${esc(r.signature.meaning)}</p>`;
+  }
+  h += `<h3>דיוקן אישיות</h3><p style="margin:0 0 14px;max-width:62ch">${esc(r.portrait.summary)}</p>
+    <div class="portrait">
+      <div><h4>חשיבה</h4><p>${esc(r.portrait.thinking)}</p></div>
+      <div><h4>רגש</h4><p>${esc(r.portrait.emotion)}</p></div>
+      <div><h4>קשר עם אחרים</h4><p>${esc(r.portrait.social)}</p></div>
+      <div><h4>אנרגיה ועשייה</h4><p>${esc(r.portrait.drive)}</p></div>
+    </div>
+    <div class="two" style="margin-top:8px">
+      <div><h3>כוחות</h3><ul class="plain">${r.strengths.map(s => `<li>${esc(s)}</li>`).join("")}</ul></div>
+      <div><h3>נקודות צמיחה</h3><ul class="plain tens">${r.tensions.map(s => `<li>${esc(s)}</li>`).join("")}</ul></div>
+    </div>
+    <h3>נקודות למחשבה</h3>
+    <div class="reflect">${r.reflection.map(x => `<div><b>${esc(x.title)}</b><span>${esc(x.question)}</span></div>`).join("")}</div>`;
+  $("#resultBody").innerHTML = h;
+}
+
+const BASE_TOPICS = ["קריירה ועבודה", "זוגיות ויחסים", "קבלת החלטות", "ביטחון עצמי", "יצירה וביטוי", "איזון ומנוחה"];
+let chosenTopic = "";
+function renderChips(){
+  const topics = [...new Set([...(result.directions || []), ...BASE_TOPICS])].slice(0, 10);
+  const box = $("#chips"); box.innerHTML = "";
+  topics.forEach(t => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = t;
+    b.setAttribute("aria-pressed", String(t === chosenTopic));
+    b.onclick = () => { chosenTopic = t; $("#topic").value = t; renderChips(); };
+    box.append(b);
+  });
+}
+$("#topic").addEventListener("input", () => { chosenTopic = $("#topic").value.trim(); renderChips(); });
+
+/* minimal, safe markdown: ### headings, - bullets, **bold** */
+function md(src){
+  const lines = esc(src).split("\n"); let out = "", inList = false;
+  const inline = s => s.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  for (let l of lines) {
+    l = l.trim();
+    if (/^[-*•]\s+/.test(l)) { if (!inList) { out += "<ul>"; inList = true; } out += `<li>${inline(l.replace(/^[-*•]\s+/, ""))}</li>`; continue; }
+    if (inList) { out += "</ul>"; inList = false; }
+    if (!l) continue;
+    if (/^#{1,4}\s+/.test(l)) out += `<h3>${inline(l.replace(/^#{1,4}\s+/, ""))}</h3>`;
+    else out += `<p>${inline(l)}</p>`;
+  }
+  if (inList) out += "</ul>";
+  return out;
+}
+function renderGuides(){
+  $("#guides").innerHTML = guides.map((g, i) => `<div class="guide" id="g${i}"><div class="topic">${esc(g.topic)}</div><div class="md">${md(g.text)}</div></div>`).join("");
+}
+
+function guidePrompt(topic, ctx){
+  const p = prefs();
+  return `You are a warm, grounded personal-development guide. Below is a handwriting-based personality reading of a person (JSON, Hebrew). They ask for guidance about a topic that occupies them.
+
+Reading:
+${JSON.stringify(result)}
+
+Topic: ${topic}
+${ctx ? "Background they shared: " + ctx : ""}
+
+Write in Hebrew, speaking directly to the person in ${p.gen === "נקבה" ? "feminine" : p.gen === "רבים" ? "plural (gender-neutral)" : "masculine"} second person${p.name ? ", their name is " + p.name : ""}. 250-400 words. Tie points to specific handwriting signs from the reading (e.g. "הרווחים הגדולים בין המילים..."). Phrase as tendencies, not certainties. No medical or psychological diagnosis.
+Use exactly this structure with "### " headings and "- " bullets, no other markdown:
+### מה הכתב מספר על הנושא הזה
+### כוחות שאפשר להישען עליהם
+### למה כדאי לשים לב
+### צעדים מעשיים
+(3-5 bullets)
+### שאלה לקחת איתך
+(one question)`;
+}
+
+$("#askGuide").onclick = async () => {
+  const topic = $("#topic").value.trim();
+  if (!topic) { setStatus("#gstatus", "בחרו נושא או כתבו אחד.", true); $("#topic").focus(); return; }
+  if (isExample) { setStatus("#gstatus", "הכוונה זמינה אחרי ניתוח של הכתב שלכם.", true); return; }
+  if (!sample) { setStatus("#gstatus", "ההכוונה פועלת כשהכלי פתוח בתוך Claude.", true); return; }
+  gctl = new AbortController();
+  $("#askGuide").disabled = true; $("#stopGuide").hidden = false;
+  setStatus("#gstatus", "חושב על " + esc(topic) + "…", false, true);
+  guides.unshift({ topic, text: "" }); renderGuides();
+  const box = () => document.querySelector("#g0 .md");
+  try {
+    const { text, truncated } = await sample(guidePrompt(topic, $("#ctx").value.trim()), {
+      signal: gctl.signal, cache: false,
+      onText: ({ text }) => { guides[0].text = text; box().innerHTML = md(text); }
+    });
+    guides[0].text = text; renderGuides();
+    setStatus("#gstatus", truncated ? "התשובה נקטעה. נסו לנסח את הנושא בקצרה." : "ההכוונה נוספה לסיכום.");
+    save(); renderDoc();
+  } catch (e) {
+    if (e?.text) { guides[0].text = e.text; renderGuides(); }
+    else { guides.shift(); renderGuides(); }
+    setStatus("#gstatus", e?.code === "cancelled" ? "נעצר." : errText(e?.code), e?.code !== "cancelled");
+    save(); renderDoc();
+  } finally {
+    $("#askGuide").disabled = false; $("#stopGuide").hidden = true;
+  }
+};
+$("#stopGuide").onclick = () => gctl?.abort();
+
+/* ---------- export ---------- */
+function buildDoc(){
+  const r = result, p = prefs(), L = [];
+  if ($("#incPrompt").checked) {
+    L.push("> **בקשה ל־AI:** מצורף סיכום של ניתוח גרפולוגי שעשיתי לכתב היד שלי. קרא אותו בעיון. אני רוצה שתעזור לי להמשיך את ההתבוננות: שאל אותי שאלות על נקודות המחשבה, עזור לי לבחון אילו מהתובנות מתאימות לי באמת, והצע צעדים קטנים ומעשיים בתחומים שמעסיקים אותי. זכור שגרפולוגיה היא שיטה פרשנית, אז התייחס לממצאים כהשערות לבדיקה ולא כעובדות.", "");
+  }
+  L.push(`# סיכום ניתוח גרפולוגי${p.name ? " – " + p.name : ""}`, "");
+  L.push(`תאריך: ${r.date || ""} · יד כותבת: ${p.hand}${r.script ? " · כתב: " + r.script : ""}`, "");
+  if (isExample) L.push("*(דוח לדוגמה)*", "");
+  L.push("## רושם כללי", r.overview, "");
+  L.push("## סימנים בכתב (0–100 בין שני קטבים)");
+  r.traits.forEach((t, i) => { const d = TRAITS[i]; L.push(`- **${d[1]}** (${d[2]} ← ${t.value} → ${d[3]}): ${t.observation} ${t.meaning}`.trim()); });
+  L.push("");
+  if (r.signature.observation) L.push("## החתימה", `${r.signature.observation} ${r.signature.meaning}`.trim(), "");
+  L.push("## דיוקן אישיות", r.portrait.summary, "",
+    `- **חשיבה:** ${r.portrait.thinking}`, `- **רגש:** ${r.portrait.emotion}`, `- **קשר עם אחרים:** ${r.portrait.social}`, `- **אנרגיה ועשייה:** ${r.portrait.drive}`, "");
+  L.push("## כוחות", ...r.strengths.map(s => "- " + s), "");
+  L.push("## נקודות צמיחה", ...r.tensions.map(s => "- " + s), "");
+  L.push("## נקודות למחשבה", ...r.reflection.map((x, i) => `${i+1}. **${x.title}** – ${x.question}`), "");
+  if (r.directions.length) L.push("## כיוונים שעלו מהניתוח", r.directions.join(" · "), "");
+  const done = guides.filter(g => g.text);
+  if (done.length) {
+    L.push("## הכוונות שקיבלתי");
+    done.slice().reverse().forEach(g => { L.push("", `### נושא: ${g.topic}`, g.text.replace(/^###\s+/gm, "#### ")); });
+    L.push("");
+  }
+  L.push("---", "נוצר בכלי \"הגרפולוג\". גרפולוגיה אינה שיטה מבוססת מדעית; הממצאים הם הזמנה להתבוננות ולא אבחון.");
+  return L.join("\n");
+}
+function renderDoc(){ if (result) $("#docPreview").textContent = buildDoc(); }
+$("#incPrompt").onchange = renderDoc;
+$("#name").addEventListener("input", () => { if (result) { renderResults(); renderDoc(); save(); } });
+document.querySelectorAll('input[name=hand]').forEach(r => r.onchange = renderDoc);
+
+$("#copyDoc").onclick = async () => {
+  const txt = buildDoc();
+  try { await navigator.clipboard.writeText(txt); setStatus("#estatus", "הסיכום הועתק. הדביקו אותו בצ'אט עם AI או שלחו למי שתרצו."); }
+  catch {
+    const pre = $("#docPreview"); const range = document.createRange(); range.selectNodeContents(pre);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    setStatus("#estatus", "ההעתקה האוטומטית לא זמינה כאן. הטקסט מסומן, העתיקו אותו ידנית.", true);
+  }
+};
+async function dl(ext){
+  const nm = prefs().name;
+  if (!downloads) {
+    const blob = new Blob(["﻿" + buildDoc()], { type: ext === "md" ? "text/markdown;charset=utf-8" : "text/plain;charset=utf-8" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `סיכום-גרפולוגי${nm ? "-" + nm : ""}.${ext}`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    setStatus("#estatus", "הקובץ ירד. העלו אותו לשיחה עם AI.");
+    return;
+  }
+  try {
+    await downloads.save({ filename: `סיכום-גרפולוגי${nm ? "-" + nm : ""}.${ext}`, data: buildDoc() });
+    setStatus("#estatus", "הקובץ נשמר. העלו אותו לשיחה עם AI.");
+  } catch (e) {
+    if (e?.code === "declined") setStatus("#estatus", "ההורדה בוטלה.");
+    else if (e?.code === "rate_limited") setStatus("#estatus", "חלון הורדה כבר פתוח. נסו שוב בעוד רגע.", true);
+    else setStatus("#estatus", "ההורדה לא זמינה כאן. השתמשו בכפתור ההעתקה.", true);
+  }
+}
+$("#dlMd").onclick = () => dl("md");
+$("#dlTxt").onclick = () => dl("txt");
+if (navigator.share && !window.claude) {
+  $("#shareDoc").hidden = false;
+  $("#shareDoc").onclick = async () => {
+    const txt = buildDoc(), nm = prefs().name;
+    try {
+      const file = new File([txt], `סיכום-גרפולוגי${nm ? "-" + nm : ""}.txt`, { type: "text/plain" });
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ title: "סיכום ניתוח גרפולוגי", files: [file] });
+      else await navigator.share({ title: "סיכום ניתוח גרפולוגי", text: txt });
+    } catch (e) { if (e?.name !== "AbortError") setStatus("#estatus", "השיתוף לא הצליח. השתמשו בהעתקה או בהורדה.", true); }
+  };
+}
+
+$("#reset").onclick = () => {
+  result = null; guides = []; files = []; isExample = false; chosenTopic = "";
+  try { localStorage.removeItem(STORE); } catch {}
+  ["#results","#guide","#export"].forEach(s => $(s).hidden = true);
+  ["n2","n3","n4","n5"].forEach(id => $("#"+id).classList.remove("on"));
+  $("#topic").value = ""; $("#ctx").value = ""; renderThumbs(); refreshAnalyze();
+  setStatus("#status", ""); setStatus("#gstatus", ""); setStatus("#estatus", "");
+  $("#write").scrollIntoView();
+};
+
+/* ---------- example ---------- */
+const EXAMPLE = {
+  script: "עברית", note: "", date: "2026-10-19",
+  overview: "דף מאוורר, עם שוליים נדיבים בצד ימין ותנועה בטוחה קדימה. הכתב נראה כתוב בקצב טבעי, בלי עצירות רבות, ויוצר רושם של אדם שחושב תוך כדי תנועה.",
+  traits: [
+    {key:"size",value:62,observation:"האותיות בינוניות עד גדולות, עם אותיות סופיות ארוכות.",meaning:"נוכחות ורצון לתפוס מקום, יחד עם שליטה עצמית סבירה."},
+    {key:"slant",value:68,observation:"נטייה עקבית קלה בכיוון הכתיבה.",meaning:"פנייה החוצה אל אנשים ואל העתיד; תגובה רגשית יחסית מהירה."},
+    {key:"pressure",value:55,observation:"לחץ בינוני, עם הדגשות בתחילת מילים.",meaning:"אנרגיה יציבה, שמתגייסת בעיקר בפתיחת דברים חדשים."},
+    {key:"word_spacing",value:72,observation:"רווחים רחבים ואחידים בין מילים.",meaning:"צורך במרחב אישי ובזמן לעבד מחשבות לפני שמגיבים."},
+    {key:"line_spacing",value:58,observation:"השורות לא נוגעות זו בזו.",meaning:"סדר מחשבתי טוב והפרדה בין נושאים."},
+    {key:"margins",value:66,observation:"שוליים רחבים בתחילת השורה ומצטמצמים לקראת סופה.",meaning:"זהירות בפתיחה שמתחלפת בהתלהבות ככל שנכנסים לעניין."},
+    {key:"baseline",value:60,observation:"קו בסיס יציב, עולה מעט בשורות האחרונות.",meaning:"אופטימיות שמתחזקת כשמדברים על העתיד."},
+    {key:"form",value:64,observation:"שילוב של קשתות רכות עם כמה זוויות בבסיס האותיות.",meaning:"גמישות ורכות בקשר, עם קו נחוש כשצריך להחליט."},
+    {key:"speed",value:70,observation:"קווים שוטפים, קיצורים בצורות אותיות.",meaning:"חשיבה מהירה ואינטואיטיבית; לפעמים מקדימה את הפרטים."},
+    {key:"connection",value:45,observation:"חלק מהאותיות מחוברות, חלק עומדות לבד.",meaning:"שילוב של חשיבה לוגית רציפה עם הבזקי השראה."}
+  ],
+  signature: {present:true, observation:"החתימה גדולה וזורמת יותר מהטקסט, עם קו תחתון.", meaning:"הצד הציבורי בטוח ובולט יותר מהאופן שבו מרגישים בפנים."},
+  portrait: {
+    summary: "עולה תמונה של אדם פתוח וסקרן, שמונע מרעיונות ומקשר עם אנשים. יש בך שילוב של חום והתלהבות עם צורך אמיתי במרחב שקט משלך. אתה נוטה להתחיל דברים באנרגיה גבוהה ולפעמים לאבד סבלנות לפרטים. החתימה מרמזת שמה שאחרים רואים בטוח יותר ממה שאתה מרגיש לפעמים.",
+    thinking: "אינטואיטיבית ומהירה, רואה את התמונה הגדולה.",
+    emotion: "חם ומגיב, צריך זמן לבד כדי לעבד.",
+    social: "פתוח ומזמין, עם גבול ברור של מרחב אישי.",
+    drive: "אנרגיה של התחלות; נדלק מפרויקטים חדשים."
+  },
+  strengths: ["יצירתיות ויכולת לראות אפשרויות", "חום וקלות ביצירת קשר", "אופטימיות ותנועה קדימה", "סדר מחשבתי בסיסי טוב"],
+  tensions: ["פער בין הביטחון החיצוני לתחושה הפנימית", "סבלנות לפרטים ולסיום משימות", "איזון בין נתינה לאחרים למרחב לעצמך"],
+  reflection: [
+    {title:"ההתחלות שלך", question:"איזה פרויקט התחלת בהתלהבות ומחכה עכשיו לסיום? מה יעזור לך להשלים אותו?"},
+    {title:"המרחב השקט", question:"מתי בשבוע האחרון היה לך זמן אמיתי לבד, ומה קרה לך בו?"},
+    {title:"פנים וחוץ", question:"באיזה מצב אתה מציג ביטחון שאתה לא באמת מרגיש? מה היה קורה אם היית אומר את זה?"},
+    {title:"האינטואיציה", question:"מתי ההחלטה המהירה שלך התבררה כנכונה, ומתי היית רוצה לעצור עוד רגע?"},
+    {title:"השוליים", question:"איפה בחיים שלך אתה שומר מרחק בהתחלה, ואיך תדע שאפשר להתקרב?"}
+  ],
+  directions: ["השלמת פרויקטים", "גבולות ומרחב אישי", "ביטחון פנימי"]
+};
+$("#showExample").onclick = () => {
+  result = JSON.parse(JSON.stringify(EXAMPLE)); guides = []; isExample = true;
+  renderAll(); $("#results").scrollIntoView();
+};
+
+/* ---------- restore ---------- */
+const saved = load();
+if (saved?.result) {
+  result = saved.result; guides = saved.guides || [];
+  if (saved.name) $("#name").value = saved.name;
+  renderAll();
+  setStatus("#status", "הניתוח הקודם שלכם נטען. אפשר להעלות דף חדש לניתוח נוסף.");
+}
+</script>
+</body>
+</html>
